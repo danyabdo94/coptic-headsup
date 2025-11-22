@@ -1,0 +1,23 @@
+{
+  "appTitle": "Heads Up! لايت",
+  "tapStart": "اضغط ابدأ!",
+  "startGame": "ابدأ اللعبة",
+  "timeLeft": "الوقت: {time}ث",
+  "score": "النتيجة: {score}",
+  "placePhoneOnForehead": "ضع الهاتف على جبهتك!",
+  "tiltDownCorrect": "مل للأسفل للإجابة الصحيحة",
+  "tiltUpPass": "مل للأعلى للتخطي",
+  "gameOver": "انتهت اللعبة!",
+  "finalScore": "النتيجة النهائية: {score}",
+  "playAgain": "العب مرة أخرى",
+  "backToMenu": "العودة للقائمة",
+  "selectCategory": "اختر فئة",
+  "loading": "جاري التحميل...",
+  "errorLoadingWords": "خطأ في تحميل الكلمات",
+  "correct": "صحيح!",
+  "pass": "تخطي!",
+  "gameInstructions": "خمن الكلمة على الشاشة بناءً على تلميحات فريقك. مل للأسفل لـ \"صحيح\" وللأعلى لـ \"تخطي\".",
+  "wordsPlayed": "الكلمات التي تم لعبها (اضغط للتفاصيل):",
+  "close": "إغلاق",
+  "noDescription": "لا يوجد وصف متاح."
+}

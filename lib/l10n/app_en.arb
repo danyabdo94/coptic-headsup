@@ -1,0 +1,44 @@
+{
+  "appTitle": "Heads Up! Lite",
+  "tapStart": "Tap Start!",
+  "startGame": "Start Game",
+  "timeLeft": "Time: {time}s",
+  "@timeLeft": {
+    "placeholders": {
+      "time": {
+        "type": "int"
+      }
+    }
+  },
+  "score": "Score: {score}",
+  "@score": {
+    "placeholders": {
+      "score": {
+        "type": "int"
+      }
+    }
+  },
+  "placePhoneOnForehead": "Place phone on forehead!",
+  "tiltDownCorrect": "Tilt DOWN for Correct",
+  "tiltUpPass": "Tilt UP for Pass",
+  "gameOver": "Game Over!",
+  "finalScore": "Final Score: {score}",
+  "@finalScore": {
+    "placeholders": {
+      "score": {
+        "type": "int"
+      }
+    }
+  },
+  "playAgain": "Play Again",
+  "backToMenu": "Back to Menu",
+  "selectCategory": "Select a Category",
+  "loading": "Loading...",
+  "errorLoadingWords": "Error loading words",
+  "correct": "Correct!",
+  "pass": "Pass!",
+  "gameInstructions": "Guess the word on the screen based on your team's clues. Tilt down for \"Correct\" and up for \"Skip\".",
+  "wordsPlayed": "Words Played (Tap for info):",
+  "close": "Close",
+  "noDescription": "No description available."
+}

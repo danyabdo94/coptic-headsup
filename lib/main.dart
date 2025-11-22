@@ -3,6 +3,8 @@ import 'dart:convert';
 import 'dart:math';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:flutter_localizations/flutter_localizations.dart';
+import 'l10n/app_localizations.dart';
 // NOTE: For a real project, this package must be added to pubspec.yaml
 import 'package:sensors_plus/sensors_plus.dart';
 
@@ -57,13 +59,24 @@ class HeadsUpGame extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      title: 'Heads Up! Lite',
+      onGenerateTitle: (context) => AppLocalizations.of(context)!.appTitle,
       theme: ThemeData(
         primarySwatch: Colors.teal,
         fontFamily: 'Inter',
         useMaterial3: true,
       ),
       home: const HeadsUpHomePage(),
+      // Add localization support
+      localizationsDelegates: const [
+        GlobalMaterialLocalizations.delegate,
+        GlobalWidgetsLocalizations.delegate,
+        GlobalCupertinoLocalizations.delegate,
+        AppLocalizations.delegate, // Custom localizations
+      ],
+      supportedLocales: const [
+        Locale('en', ''), // English
+        Locale('ar', ''), // Arabic
+      ],
     );
   }
 }
@@ -82,7 +95,7 @@ class _HeadsUpHomePageState extends State<HeadsUpHomePage> {
   GameState _gameState = GameState.lobby;
   int _score = 0;
   int _timeLeft = _kGameDurationSeconds;
-  String _currentWord = 'Tap Start!';
+  String _currentWord = '';
   String? _currentDescription;
   Timer? _timer;
 
@@ -103,7 +116,6 @@ class _HeadsUpHomePageState extends State<HeadsUpHomePage> {
   @override
   void initState() {
     super.initState();
-    _loadWordData();
     // Start listening to the accelerometer stream immediately
     _accelerometerSubscription = accelerometerEventStream().listen((
       AccelerometerEvent event,
@@ -115,9 +127,17 @@ class _HeadsUpHomePageState extends State<HeadsUpHomePage> {
     });
   }
 
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    _loadWordData();
+  }
+
   Future<void> _loadWordData() async {
     try {
-      final String response = await rootBundle.loadString('assets/words.json');
+      final locale = Localizations.localeOf(context);
+      final String jsonFile = locale.languageCode == 'ar' ? 'assets/words_ar.json' : 'assets/words_en.json';
+      final String response = await rootBundle.loadString(jsonFile);
       final Map<String, dynamic> data = json.decode(response);
 
       setState(() {
@@ -215,7 +235,7 @@ class _HeadsUpHomePageState extends State<HeadsUpHomePage> {
       }
 
       // Move the current word to played list (if not null/initial state)
-      if (_currentWord != 'Tap Start!') {
+      if (_currentWord.isNotEmpty) {
         _playedWords.add(
           PlayedWord(_currentWord, isCorrect, description: _currentDescription),
         );
@@ -258,11 +278,11 @@ class _HeadsUpHomePageState extends State<HeadsUpHomePage> {
       builder: (context) {
         return AlertDialog(
           title: Text(playedWord.word),
-          content: Text(playedWord.description ?? 'No description available.'),
+          content: Text(playedWord.description ?? AppLocalizations.of(context)!.noDescription),
           actions: [
             TextButton(
               onPressed: () => Navigator.of(context).pop(),
-              child: const Text('Close'),
+              child: Text(AppLocalizations.of(context)!.close),
             ),
           ],
         );
@@ -278,9 +298,9 @@ class _HeadsUpHomePageState extends State<HeadsUpHomePage> {
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          const Text(
-            'Welcome to Heads Up! Lite',
-            style: TextStyle(
+          Text(
+            AppLocalizations.of(context)!.appTitle,
+            style: const TextStyle(
               fontSize: 28,
               fontWeight: FontWeight.bold,
               color: Colors.white,
@@ -288,9 +308,9 @@ class _HeadsUpHomePageState extends State<HeadsUpHomePage> {
             textAlign: TextAlign.center,
           ),
           const SizedBox(height: 20),
-          const Text(
-            'Choose a Category:',
-            style: TextStyle(fontSize: 20, color: Colors.white70),
+          Text(
+            AppLocalizations.of(context)!.selectCategory,
+            style: const TextStyle(fontSize: 20, color: Colors.white70),
           ),
           const SizedBox(height: 10),
           Wrap(
@@ -312,9 +332,9 @@ class _HeadsUpHomePageState extends State<HeadsUpHomePage> {
             }).toList(),
           ),
           const SizedBox(height: 20),
-          const Text(
-            'Guess the word on the screen based on your team\'s clues. Tilt down for "Correct" and up for "Skip".',
-            style: TextStyle(fontSize: 16, color: Colors.white70),
+          Text(
+            AppLocalizations.of(context)!.gameInstructions,
+            style: const TextStyle(fontSize: 16, color: Colors.white70),
             textAlign: TextAlign.center,
           ),
           const SizedBox(height: 40),
@@ -328,9 +348,9 @@ class _HeadsUpHomePageState extends State<HeadsUpHomePage> {
                 borderRadius: BorderRadius.circular(12),
               ),
             ),
-            child: const Text(
-              'Start Game (60s)',
-              style: TextStyle(fontSize: 20, color: Colors.white),
+            child: Text(
+              AppLocalizations.of(context)!.startGame,
+              style: const TextStyle(fontSize: 20, color: Colors.white),
             ),
           ),
         ],
@@ -391,7 +411,7 @@ class _HeadsUpHomePageState extends State<HeadsUpHomePage> {
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
                 Text(
-                  'SCORE: $_score',
+                  AppLocalizations.of(context)!.score(_score),
                   style: const TextStyle(
                     fontSize: 18,
                     color: Colors.greenAccent,
@@ -408,7 +428,7 @@ class _HeadsUpHomePageState extends State<HeadsUpHomePage> {
                   },
                 ),
                 Text(
-                  'TIME: $_timeLeft s',
+                  AppLocalizations.of(context)!.timeLeft(_timeLeft),
                   style: TextStyle(
                     fontSize: 18,
                     color: _timeLeft <= 10 ? Colors.redAccent : Colors.white,
@@ -419,14 +439,14 @@ class _HeadsUpHomePageState extends State<HeadsUpHomePage> {
           ),
 
           // Instruction (Center Top)
-          const Positioned(
+          Positioned(
             top: 80,
             left: 0,
             right: 0,
             child: Text(
-              'Tilt down for Correct, up for Skip.',
+              '${AppLocalizations.of(context)!.tiltDownCorrect}, ${AppLocalizations.of(context)!.tiltUpPass}',
               textAlign: TextAlign.center,
-              style: TextStyle(color: Colors.white70, fontSize: 16),
+              style: const TextStyle(color: Colors.white70, fontSize: 16),
             ),
           ),
 
@@ -469,9 +489,9 @@ class _HeadsUpHomePageState extends State<HeadsUpHomePage> {
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          const Text(
-            '🎉 Time\'s Up! 🎉',
-            style: TextStyle(
+          Text(
+            AppLocalizations.of(context)!.gameOver,
+            style: const TextStyle(
               fontSize: 32,
               fontWeight: FontWeight.bold,
               color: Colors.white,
@@ -479,17 +499,17 @@ class _HeadsUpHomePageState extends State<HeadsUpHomePage> {
           ),
           const SizedBox(height: 20),
           Text(
-            'Final Score: $_score',
-            style: TextStyle(
+            AppLocalizations.of(context)!.finalScore(_score),
+            style: const TextStyle(
               fontSize: 48,
               fontWeight: FontWeight.w900,
               color: Colors.greenAccent,
             ),
           ),
           const SizedBox(height: 30),
-          const Text(
-            'Words Played (Tap for info):',
-            style: TextStyle(fontSize: 20, color: Colors.white),
+          Text(
+            AppLocalizations.of(context)!.wordsPlayed,
+            style: const TextStyle(fontSize: 20, color: Colors.white),
           ),
           const SizedBox(height: 10),
           // Displaying a small list of played words
@@ -524,9 +544,9 @@ class _HeadsUpHomePageState extends State<HeadsUpHomePage> {
                 borderRadius: BorderRadius.circular(12),
               ),
             ),
-            child: const Text(
-              'Play Again',
-              style: TextStyle(fontSize: 20, color: Colors.white),
+            child: Text(
+              AppLocalizations.of(context)!.playAgain,
+              style: const TextStyle(fontSize: 20, color: Colors.white),
             ),
           ),
         ],
