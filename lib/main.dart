@@ -211,15 +211,15 @@ class _HeadsUpHomePageState extends State<HeadsUpHomePage> {
       return;
     }
 
-    // Tilt Down (Correct): Phone faces down (Z approaches +9.8)
+    // Tilt Up (Skip): Phone faces up (Z approaches +9.8)
     if (z > _kTiltThreshold) {
       _lastActionTime = DateTime.now();
-      _nextWord(true); // Correct
+      _nextWord(false); // Skip
     }
-    // Tilt Up (Skip): Phone faces up (Z approaches -9.8)
+    // Tilt Down (Correct): Phone faces down (Z approaches -9.8)
     else if (z < -_kTiltThreshold) {
       _lastActionTime = DateTime.now();
-      _nextWord(false); // Skip
+      _nextWord(true); // Correct
     }
   }
 
