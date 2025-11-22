@@ -16,10 +16,7 @@ class WordItem {
   WordItem({required this.word, required this.description});
 
   factory WordItem.fromJson(Map<String, dynamic> json) {
-    return WordItem(
-      word: json['word'],
-      description: json['description'],
-    );
+    return WordItem(word: json['word'], description: json['description']);
   }
 }
 
@@ -122,7 +119,7 @@ class _HeadsUpHomePageState extends State<HeadsUpHomePage> {
     try {
       final String response = await rootBundle.loadString('assets/words.json');
       final Map<String, dynamic> data = json.decode(response);
-      
+
       setState(() {
         _wordCategories = data.map((key, value) {
           final List<dynamic> list = value;
@@ -159,7 +156,9 @@ class _HeadsUpHomePageState extends State<HeadsUpHomePage> {
       _gameState = GameState.playing;
       _score = 0;
       _timeLeft = _kGameDurationSeconds;
-      _currentDeck = List.from(_wordCategories[_selectedCategory]!); // Copy the category deck
+      _currentDeck = List.from(
+        _wordCategories[_selectedCategory]!,
+      ); // Copy the category deck
       _playedWords.clear();
       _actionColor = Colors.black; // Reset feedback color
       _nextWord(false); // Get the first word (don't count as correct)
@@ -217,7 +216,9 @@ class _HeadsUpHomePageState extends State<HeadsUpHomePage> {
 
       // Move the current word to played list (if not null/initial state)
       if (_currentWord != 'Tap Start!') {
-        _playedWords.add(PlayedWord(_currentWord, isCorrect, description: _currentDescription));
+        _playedWords.add(
+          PlayedWord(_currentWord, isCorrect, description: _currentDescription),
+        );
       }
 
       // Get a new random word and remove it from the deck
@@ -251,56 +252,13 @@ class _HeadsUpHomePageState extends State<HeadsUpHomePage> {
     }
   }
 
-  // --- 5. UI COMPONENTS (Corresponding to Game States) ---
-
-  /// Simulates a call to the Gemini API to get a description.
-  Future<String> _callGeminiApi(String word) async {
-    // In a real app, you would make an HTTP POST request to the Gemini API here.
-    // Example:
-    // final response = await http.post(
-    //   Uri.parse('https://generativelanguage.googleapis.com/v1beta/models/gemini-pro:generateContent?key=YOUR_API_KEY'),
-    //   headers: {'Content-Type': 'application/json'},
-    //   body: jsonEncode({'contents': [{'parts': [{'text': 'Describe "$word" in one fun sentence for a game.'}]}]}),
-    // );
-    
-    // Simulating network delay
-    await Future.delayed(const Duration(seconds: 1));
-    
-    // Mock responses based on the word (or generic ones)
-    return 'A fun and exciting description for $word!';
-  }
-
-  Future<String> _getOrFetchDescription(PlayedWord playedWord) async {
-    if (playedWord.description != null) {
-      return playedWord.description!;
-    }
-    // Fallback to API if description is missing (though it should be there from JSON)
-    final description = await _callGeminiApi(playedWord.word);
-    playedWord.description = description;
-    return description;
-  }
-
   void _showWordDescription(PlayedWord playedWord) {
     showDialog(
       context: context,
       builder: (context) {
         return AlertDialog(
           title: Text(playedWord.word),
-          content: FutureBuilder<String>(
-            future: _getOrFetchDescription(playedWord),
-            builder: (context, snapshot) {
-              if (snapshot.connectionState == ConnectionState.waiting) {
-                return const SizedBox(
-                  height: 100,
-                  child: Center(child: CircularProgressIndicator()),
-                );
-              } else if (snapshot.hasError) {
-                return const Text('Failed to load description.');
-              } else {
-                return Text(snapshot.data ?? 'No description available.');
-              }
-            },
-          ),
+          content: Text(playedWord.description ?? 'No description available.'),
           actions: [
             TextButton(
               onPressed: () => Navigator.of(context).pop(),
@@ -316,65 +274,67 @@ class _HeadsUpHomePageState extends State<HeadsUpHomePage> {
     if (_isLoading) {
       return const Center(child: CircularProgressIndicator());
     }
-    return Column(
-      mainAxisAlignment: MainAxisAlignment.center,
-      children: [
-        const Text(
-          'Welcome to Heads Up! Lite',
-          style: TextStyle(
-            fontSize: 28,
-            fontWeight: FontWeight.bold,
-            color: Colors.white,
+    return SingleChildScrollView(
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          const Text(
+            'Welcome to Heads Up! Lite',
+            style: TextStyle(
+              fontSize: 28,
+              fontWeight: FontWeight.bold,
+              color: Colors.white,
+            ),
+            textAlign: TextAlign.center,
           ),
-          textAlign: TextAlign.center,
-        ),
-        const SizedBox(height: 20),
-        const Text(
-          'Choose a Category:',
-          style: TextStyle(fontSize: 20, color: Colors.white70),
-        ),
-        const SizedBox(height: 10),
-        Wrap(
-          spacing: 8.0,
-          runSpacing: 8.0,
-          alignment: WrapAlignment.center,
-          children: _wordCategories.keys.map((category) {
-            return ActionChip(
-              label: Text(category),
-              backgroundColor: _selectedCategory == category
-                  ? Colors.tealAccent
-                  : Colors.grey.shade300,
-              onPressed: () {
-                setState(() {
-                  _selectedCategory = category;
-                });
-              },
-            );
-          }).toList(),
-        ),
-        const SizedBox(height: 20),
-        const Text(
-          'Guess the word on the screen based on your team\'s clues. Tilt down for "Correct" and up for "Skip".',
-          style: TextStyle(fontSize: 16, color: Colors.white70),
-          textAlign: TextAlign.center,
-        ),
-        const SizedBox(height: 40),
-        ElevatedButton(
-          onPressed: _selectedCategory != null ? _startGame : null,
-          style: ElevatedButton.styleFrom(
-            backgroundColor: Colors.teal.shade600,
-            disabledBackgroundColor: Colors.grey,
-            padding: const EdgeInsets.symmetric(horizontal: 40, vertical: 15),
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(12),
+          const SizedBox(height: 20),
+          const Text(
+            'Choose a Category:',
+            style: TextStyle(fontSize: 20, color: Colors.white70),
+          ),
+          const SizedBox(height: 10),
+          Wrap(
+            spacing: 8.0,
+            runSpacing: 8.0,
+            alignment: WrapAlignment.center,
+            children: _wordCategories.keys.map((category) {
+              return ActionChip(
+                label: Text(category),
+                backgroundColor: _selectedCategory == category
+                    ? Colors.tealAccent
+                    : Colors.grey.shade300,
+                onPressed: () {
+                  setState(() {
+                    _selectedCategory = category;
+                  });
+                },
+              );
+            }).toList(),
+          ),
+          const SizedBox(height: 20),
+          const Text(
+            'Guess the word on the screen based on your team\'s clues. Tilt down for "Correct" and up for "Skip".',
+            style: TextStyle(fontSize: 16, color: Colors.white70),
+            textAlign: TextAlign.center,
+          ),
+          const SizedBox(height: 40),
+          ElevatedButton(
+            onPressed: _selectedCategory != null ? _startGame : null,
+            style: ElevatedButton.styleFrom(
+              backgroundColor: Colors.teal.shade600,
+              disabledBackgroundColor: Colors.grey,
+              padding: const EdgeInsets.symmetric(horizontal: 40, vertical: 15),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(12),
+              ),
+            ),
+            child: const Text(
+              'Start Game (60s)',
+              style: TextStyle(fontSize: 20, color: Colors.white),
             ),
           ),
-          child: const Text(
-            'Start Game (60s)',
-            style: TextStyle(fontSize: 20, color: Colors.white),
-          ),
-        ),
-      ],
+        ],
+      ),
     );
   }
 
@@ -393,15 +353,32 @@ class _HeadsUpHomePageState extends State<HeadsUpHomePage> {
         children: [
           // Current Word Display (Center)
           Center(
-            child: Text(
-              _currentWord.toUpperCase(),
-              style: const TextStyle(
-                fontSize: 64,
-                fontWeight: FontWeight.w900,
-                color: Colors.white,
-                letterSpacing: 2,
-              ),
-              textAlign: TextAlign.center,
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Text(
+                  _currentWord.toUpperCase(),
+                  style: const TextStyle(
+                    fontSize: 56,
+                    fontWeight: FontWeight.w900,
+                    color: Colors.white,
+                    letterSpacing: 2,
+                  ),
+                  textAlign: TextAlign.center,
+                ),
+                if (_currentDescription != null)
+                  Padding(
+                    padding: const EdgeInsets.only(top: 12.0),
+                    child: Text(
+                      _currentDescription!,
+                      style: const TextStyle(
+                        fontSize: 18,
+                        color: Colors.white70,
+                      ),
+                      textAlign: TextAlign.center,
+                    ),
+                  ),
+              ],
             ),
           ),
 
@@ -419,6 +396,16 @@ class _HeadsUpHomePageState extends State<HeadsUpHomePage> {
                     fontSize: 18,
                     color: Colors.greenAccent,
                   ),
+                ),
+                IconButton(
+                  icon: const Icon(Icons.close, color: Colors.white),
+                  onPressed: () {
+                    _timer?.cancel();
+                    setState(() {
+                      _gameState = GameState.lobby;
+                      _selectedCategory = null;
+                    });
+                  },
                 ),
                 Text(
                   'TIME: $_timeLeft s',
