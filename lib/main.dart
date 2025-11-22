@@ -1,40 +1,36 @@
 import 'dart:async';
+import 'dart:convert';
 import 'dart:math';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 // NOTE: For a real project, this package must be added to pubspec.yaml
 import 'package:sensors_plus/sensors_plus.dart';
 
 // --- 1. DATA AND CONSTANTS ---
 
-// Hardcoded Word List (The Deck)
-const List<String> _kWordDeck = [
-  'Dog',
-  'Cat',
-  'Elephant',
-  'Lion',
-  'Tiger',
-  'Monkey',
-  'Zebra',
-  'Apple',
-  'Banana',
-  'Orange',
-  'Grape',
-  'Strawberry',
-  'Mango',
-  'Car',
-  'Train',
-  'Bus',
-  'Bicycle',
-  'Airplane',
-  'Boat',
-  'Coding',
-  'Flutter',
-  'Dart',
-  'Software',
-  'Develop',
-  'AI',
-  'Game',
-];
+// Word Item Model
+class WordItem {
+  final String word;
+  final String description;
+
+  WordItem({required this.word, required this.description});
+
+  factory WordItem.fromJson(Map<String, dynamic> json) {
+    return WordItem(
+      word: json['word'],
+      description: json['description'],
+    );
+  }
+}
+
+// Played Word Model
+class PlayedWord {
+  final String word;
+  final bool isCorrect;
+  String? description;
+
+  PlayedWord(this.word, this.isCorrect, {this.description});
+}
 
 // Game duration in seconds
 const int _kGameDurationSeconds = 60;
@@ -90,6 +86,7 @@ class _HeadsUpHomePageState extends State<HeadsUpHomePage> {
   int _score = 0;
   int _timeLeft = _kGameDurationSeconds;
   String _currentWord = 'Tap Start!';
+  String? _currentDescription;
   Timer? _timer;
 
   // Sensor & Feedback Management
@@ -99,13 +96,17 @@ class _HeadsUpHomePageState extends State<HeadsUpHomePage> {
   Color _actionColor = Colors.black; // Visual feedback color
 
   // Word Management
-  List<String> _currentDeck = [];
-  final List<String> _playedWords = [];
+  Map<String, List<WordItem>> _wordCategories = {};
+  List<WordItem> _currentDeck = [];
+  final List<PlayedWord> _playedWords = [];
   final Random _random = Random();
+  String? _selectedCategory;
+  bool _isLoading = true;
 
   @override
   void initState() {
     super.initState();
+    _loadWordData();
     // Start listening to the accelerometer stream immediately
     _accelerometerSubscription = accelerometerEventStream().listen((
       AccelerometerEvent event,
@@ -115,6 +116,29 @@ class _HeadsUpHomePageState extends State<HeadsUpHomePage> {
         _handleTilt(event.z);
       }
     });
+  }
+
+  Future<void> _loadWordData() async {
+    try {
+      final String response = await rootBundle.loadString('assets/words.json');
+      final Map<String, dynamic> data = json.decode(response);
+      
+      setState(() {
+        _wordCategories = data.map((key, value) {
+          final List<dynamic> list = value;
+          return MapEntry(
+            key,
+            list.map((item) => WordItem.fromJson(item)).toList(),
+          );
+        });
+        _isLoading = false;
+      });
+    } catch (e) {
+      debugPrint('Error loading word data: $e');
+      setState(() {
+        _isLoading = false;
+      });
+    }
   }
 
   @override
@@ -129,11 +153,13 @@ class _HeadsUpHomePageState extends State<HeadsUpHomePage> {
 
   /// Resets game variables and starts the 60-second timer.
   void _startGame() {
+    if (_selectedCategory == null) return;
+
     setState(() {
       _gameState = GameState.playing;
       _score = 0;
       _timeLeft = _kGameDurationSeconds;
-      _currentDeck = List.from(_kWordDeck); // Copy the full deck
+      _currentDeck = List.from(_wordCategories[_selectedCategory]!); // Copy the category deck
       _playedWords.clear();
       _actionColor = Colors.black; // Reset feedback color
       _nextWord(false); // Get the first word (don't count as correct)
@@ -191,12 +217,14 @@ class _HeadsUpHomePageState extends State<HeadsUpHomePage> {
 
       // Move the current word to played list (if not null/initial state)
       if (_currentWord != 'Tap Start!') {
-        _playedWords.add(_currentWord);
+        _playedWords.add(PlayedWord(_currentWord, isCorrect, description: _currentDescription));
       }
 
       // Get a new random word and remove it from the deck
       final int index = _random.nextInt(_currentDeck.length);
-      _currentWord = _currentDeck[index];
+      final WordItem nextItem = _currentDeck[index];
+      _currentWord = nextItem.word;
+      _currentDescription = nextItem.description;
       _currentDeck.removeAt(index);
     });
 
@@ -225,7 +253,69 @@ class _HeadsUpHomePageState extends State<HeadsUpHomePage> {
 
   // --- 5. UI COMPONENTS (Corresponding to Game States) ---
 
+  /// Simulates a call to the Gemini API to get a description.
+  Future<String> _callGeminiApi(String word) async {
+    // In a real app, you would make an HTTP POST request to the Gemini API here.
+    // Example:
+    // final response = await http.post(
+    //   Uri.parse('https://generativelanguage.googleapis.com/v1beta/models/gemini-pro:generateContent?key=YOUR_API_KEY'),
+    //   headers: {'Content-Type': 'application/json'},
+    //   body: jsonEncode({'contents': [{'parts': [{'text': 'Describe "$word" in one fun sentence for a game.'}]}]}),
+    // );
+    
+    // Simulating network delay
+    await Future.delayed(const Duration(seconds: 1));
+    
+    // Mock responses based on the word (or generic ones)
+    return 'A fun and exciting description for $word!';
+  }
+
+  Future<String> _getOrFetchDescription(PlayedWord playedWord) async {
+    if (playedWord.description != null) {
+      return playedWord.description!;
+    }
+    // Fallback to API if description is missing (though it should be there from JSON)
+    final description = await _callGeminiApi(playedWord.word);
+    playedWord.description = description;
+    return description;
+  }
+
+  void _showWordDescription(PlayedWord playedWord) {
+    showDialog(
+      context: context,
+      builder: (context) {
+        return AlertDialog(
+          title: Text(playedWord.word),
+          content: FutureBuilder<String>(
+            future: _getOrFetchDescription(playedWord),
+            builder: (context, snapshot) {
+              if (snapshot.connectionState == ConnectionState.waiting) {
+                return const SizedBox(
+                  height: 100,
+                  child: Center(child: CircularProgressIndicator()),
+                );
+              } else if (snapshot.hasError) {
+                return const Text('Failed to load description.');
+              } else {
+                return Text(snapshot.data ?? 'No description available.');
+              }
+            },
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(),
+              child: const Text('Close'),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
   Widget _buildLobby(BuildContext context) {
+    if (_isLoading) {
+      return const Center(child: CircularProgressIndicator());
+    }
     return Column(
       mainAxisAlignment: MainAxisAlignment.center,
       children: [
@@ -240,15 +330,40 @@ class _HeadsUpHomePageState extends State<HeadsUpHomePage> {
         ),
         const SizedBox(height: 20),
         const Text(
+          'Choose a Category:',
+          style: TextStyle(fontSize: 20, color: Colors.white70),
+        ),
+        const SizedBox(height: 10),
+        Wrap(
+          spacing: 8.0,
+          runSpacing: 8.0,
+          alignment: WrapAlignment.center,
+          children: _wordCategories.keys.map((category) {
+            return ActionChip(
+              label: Text(category),
+              backgroundColor: _selectedCategory == category
+                  ? Colors.tealAccent
+                  : Colors.grey.shade300,
+              onPressed: () {
+                setState(() {
+                  _selectedCategory = category;
+                });
+              },
+            );
+          }).toList(),
+        ),
+        const SizedBox(height: 20),
+        const Text(
           'Guess the word on the screen based on your team\'s clues. Tilt down for "Correct" and up for "Skip".',
           style: TextStyle(fontSize: 16, color: Colors.white70),
           textAlign: TextAlign.center,
         ),
         const SizedBox(height: 40),
         ElevatedButton(
-          onPressed: _startGame,
+          onPressed: _selectedCategory != null ? _startGame : null,
           style: ElevatedButton.styleFrom(
             backgroundColor: Colors.teal.shade600,
+            disabledBackgroundColor: Colors.grey,
             padding: const EdgeInsets.symmetric(horizontal: 40, vertical: 15),
             shape: RoundedRectangleBorder(
               borderRadius: BorderRadius.circular(12),
@@ -363,66 +478,72 @@ class _HeadsUpHomePageState extends State<HeadsUpHomePage> {
   }
 
   Widget _buildGameOver() {
-    return Column(
-      mainAxisAlignment: MainAxisAlignment.center,
-      children: [
-        const Text(
-          '🎉 Time\'s Up! 🎉',
-          style: TextStyle(
-            fontSize: 32,
-            fontWeight: FontWeight.bold,
-            color: Colors.white,
-          ),
-        ),
-        const SizedBox(height: 20),
-        Text(
-          'Final Score: $_score',
-          style: TextStyle(
-            fontSize: 48,
-            fontWeight: FontWeight.w900,
-            color: Colors.greenAccent,
-          ),
-        ),
-        const SizedBox(height: 30),
-        const Text(
-          'Words Played:',
-          style: TextStyle(fontSize: 20, color: Colors.white),
-        ),
-        const SizedBox(height: 10),
-        // Displaying a small list of played words
-        Wrap(
-          spacing: 8.0,
-          runSpacing: 4.0,
-          alignment: WrapAlignment.center,
-          children: _playedWords
-              .map(
-                (word) => Chip(
-                  label: Text(word),
-                  backgroundColor: Colors.teal.shade100,
-                ),
-              )
-              .toList(),
-        ),
-        const SizedBox(height: 40),
-        ElevatedButton(
-          onPressed: () {
-            setState(() {
-              _gameState = GameState.lobby;
-            });
-          },
-          style: ElevatedButton.styleFrom(
-            backgroundColor: Colors.teal.shade600,
-            padding: const EdgeInsets.symmetric(horizontal: 40, vertical: 15),
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(12),
+    return SingleChildScrollView(
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          const Text(
+            '🎉 Time\'s Up! 🎉',
+            style: TextStyle(
+              fontSize: 32,
+              fontWeight: FontWeight.bold,
+              color: Colors.white,
             ),
           ),
-          child: const Text(
-            'Play Again',
+          const SizedBox(height: 20),
+          Text(
+            'Final Score: $_score',
+            style: TextStyle(
+              fontSize: 48,
+              fontWeight: FontWeight.w900,
+              color: Colors.greenAccent,
+            ),
+          ),
+          const SizedBox(height: 30),
+          const Text(
+            'Words Played (Tap for info):',
             style: TextStyle(fontSize: 20, color: Colors.white),
           ),
-        ),
-      ],
+          const SizedBox(height: 10),
+          // Displaying a small list of played words
+          Wrap(
+            spacing: 8.0,
+            runSpacing: 4.0,
+            alignment: WrapAlignment.center,
+            children: _playedWords.map((playedWord) {
+              return GestureDetector(
+                onTap: () => _showWordDescription(playedWord),
+                child: Chip(
+                  label: Text(playedWord.word),
+                  backgroundColor: playedWord.isCorrect
+                      ? Colors.green.shade200
+                      : Colors.red.shade200,
+                ),
+              );
+            }).toList(),
+          ),
+          const SizedBox(height: 40),
+          ElevatedButton(
+            onPressed: () {
+              setState(() {
+                _gameState = GameState.lobby;
+                _selectedCategory = null; // Reset category selection
+              });
+            },
+            style: ElevatedButton.styleFrom(
+              backgroundColor: Colors.teal.shade600,
+              padding: const EdgeInsets.symmetric(horizontal: 40, vertical: 15),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(12),
+              ),
+            ),
+            child: const Text(
+              'Play Again',
+              style: TextStyle(fontSize: 20, color: Colors.white),
+            ),
+          ),
+        ],
+      ),
     );
   }
 

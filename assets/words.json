@@ -1,0 +1,36 @@
+{
+  "Animals": [
+    {"word": "Dog", "description": "A loyal domestic animal known as man's best friend."},
+    {"word": "Cat", "description": "A small domesticated carnivorous mammal with soft fur."},
+    {"word": "Elephant", "description": "The largest existing land animal with a long trunk."},
+    {"word": "Lion", "description": "A large wild cat known as the king of the jungle."},
+    {"word": "Tiger", "description": "A large wild cat with a reddish-orange coat and black stripes."},
+    {"word": "Monkey", "description": "A primate known for its intelligence and agility."},
+    {"word": "Zebra", "description": "A wild horse with black-and-white stripes."}
+  ],
+  "Food": [
+    {"word": "Apple", "description": "A round fruit with red or green skin and a crisp flesh."},
+    {"word": "Banana", "description": "A long curved fruit with a yellow skin and soft sweet flesh."},
+    {"word": "Orange", "description": "A round juicy citrus fruit with a tough bright reddish-yellow rind."},
+    {"word": "Grape", "description": "A berry, typically green, purple, or black, growing in clusters on a vine."},
+    {"word": "Strawberry", "description": "A sweet soft red fruit with a seed-studded surface."},
+    {"word": "Mango", "description": "A fleshy, oval, yellowish-red tropical fruit that is eaten ripe or used green for pickles or chutneys."}
+  ],
+  "Transport": [
+    {"word": "Car", "description": "A road vehicle, typically with four wheels, powered by an internal combustion engine."},
+    {"word": "Train", "description": "A series of railroad cars moved as a unit by a locomotive or by integral motors."},
+    {"word": "Bus", "description": "A large motor vehicle carrying passengers by road."},
+    {"word": "Bicycle", "description": "A vehicle composed of two wheels held in a frame one behind the other, propelled by pedals."},
+    {"word": "Airplane", "description": "A powered flying vehicle with fixed wings and a weight greater than that of the air it displaces."},
+    {"word": "Boat", "description": "A small vessel propelled on water by oars, sails, or an engine."}
+  ],
+  "Tech": [
+    {"word": "Coding", "description": "The process of assigning a code to something for the purposes of classification or identification."},
+    {"word": "Flutter", "description": "An open-source UI software development kit created by Google."},
+    {"word": "Dart", "description": "A client-optimized programming language for apps on multiple platforms."},
+    {"word": "Software", "description": "The programs and other operating information used by a computer."},
+    {"word": "Develop", "description": "Grow or cause to grow and become more mature, advanced, or elaborate."},
+    {"word": "AI", "description": "Artificial intelligence, the simulation of human intelligence processes by machines."},
+    {"word": "Game", "description": "A form of play or sport, especially a competitive one played according to rules and decided by skill, strength, or luck."}
+  ]
+}
