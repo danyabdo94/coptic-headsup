@@ -110,7 +110,6 @@ class _HeadsUpHomePageState extends State<HeadsUpHomePage> {
   List<WordItem> _currentDeck = [];
   final List<PlayedWord> _playedWords = [];
   final Random _random = Random();
-  String? _selectedCategory;
   bool _isLoading = true;
 
   @override
@@ -136,7 +135,9 @@ class _HeadsUpHomePageState extends State<HeadsUpHomePage> {
   Future<void> _loadWordData() async {
     try {
       final locale = Localizations.localeOf(context);
-      final String jsonFile = locale.languageCode == 'ar' ? 'assets/words_ar.json' : 'assets/words_en.json';
+      final String jsonFile = locale.languageCode == 'ar'
+          ? 'assets/words_ar.json'
+          : 'assets/words_en.json';
       final String response = await rootBundle.loadString(jsonFile);
       final Map<String, dynamic> data = json.decode(response);
 
@@ -169,16 +170,25 @@ class _HeadsUpHomePageState extends State<HeadsUpHomePage> {
   // --- 4. State Management/Game Flow Functions ---
 
   /// Resets game variables and starts the 60-second timer.
-  void _startGame() {
-    if (_selectedCategory == null) return;
+  void _startGame([String? category]) {
+    List<WordItem> deck;
+    if (category != null) {
+      deck = List.from(_wordCategories[category]!);
+    } else {
+      deck = [];
+      for (var list in _wordCategories.values) {
+        deck.addAll(list);
+      }
+      deck.shuffle(_random);
+    }
+
+    if (deck.isEmpty) return;
 
     setState(() {
       _gameState = GameState.playing;
       _score = 0;
       _timeLeft = _kGameDurationSeconds;
-      _currentDeck = List.from(
-        _wordCategories[_selectedCategory]!,
-      ); // Copy the category deck
+      _currentDeck = deck;
       _playedWords.clear();
       _actionColor = Colors.black; // Reset feedback color
       _nextWord(false); // Get the first word (don't count as correct)
@@ -278,7 +288,10 @@ class _HeadsUpHomePageState extends State<HeadsUpHomePage> {
       builder: (context) {
         return AlertDialog(
           title: Text(playedWord.word),
-          content: Text(playedWord.description ?? AppLocalizations.of(context)!.noDescription),
+          content: Text(
+            playedWord.description ??
+                AppLocalizations.of(context)!.noDescription,
+          ),
           actions: [
             TextButton(
               onPressed: () => Navigator.of(context).pop(),
@@ -313,23 +326,78 @@ class _HeadsUpHomePageState extends State<HeadsUpHomePage> {
             style: const TextStyle(fontSize: 20, color: Colors.white70),
           ),
           const SizedBox(height: 10),
-          Wrap(
-            spacing: 8.0,
-            runSpacing: 8.0,
-            alignment: WrapAlignment.center,
-            children: _wordCategories.keys.map((category) {
-              return ActionChip(
-                label: Text(category),
-                backgroundColor: _selectedCategory == category
-                    ? Colors.tealAccent
-                    : Colors.grey.shade300,
-                onPressed: () {
-                  setState(() {
-                    _selectedCategory = category;
-                  });
+          GridView.builder(
+            shrinkWrap: true,
+            physics: const NeverScrollableScrollPhysics(),
+            gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+              crossAxisCount: 2,
+              crossAxisSpacing: 12,
+              mainAxisSpacing: 12,
+              childAspectRatio: 1.2,
+            ),
+            itemCount: _wordCategories.keys.length,
+            itemBuilder: (context, index) {
+              final category = _wordCategories.keys.elementAt(index);
+
+              IconData iconData;
+              if (category.contains('Male') && !category.contains('Female')) {
+                iconData = Icons.person;
+              } else if (category.contains('Female')) {
+                iconData = Icons.woman;
+              } else if (category.contains('Liturgical')) {
+                iconData = Icons.church;
+              } else if (category.contains('Vestments')) {
+                iconData = Icons.checkroom;
+              } else if (category.contains('Clergy')) {
+                iconData = Icons.workspace_premium;
+              } else if (category.contains('Books')) {
+                iconData = Icons.menu_book;
+              } else if (category.contains('Feasts')) {
+                iconData = Icons.calendar_month;
+              } else if (category.contains('Bible')) {
+                iconData = Icons.people_alt;
+              } else if (category.contains('Vocabulary')) {
+                iconData = Icons.translate;
+              } else {
+                iconData = Icons.category;
+              }
+
+              return GestureDetector(
+                onTap: () {
+                  _startGame(category);
                 },
+                child: AnimatedContainer(
+                  duration: const Duration(milliseconds: 200),
+                  decoration: BoxDecoration(
+                    color: Colors.grey.shade300,
+                    borderRadius: BorderRadius.circular(16),
+                    boxShadow: const [],
+                  ),
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Icon(
+                        iconData,
+                        size: 32,
+                        color: Colors.black87,
+                      ),
+                      const SizedBox(height: 8),
+                      Text(
+                        category.replaceAll('_', ' '),
+                        style: const TextStyle(
+                          color: Colors.black87,
+                          fontWeight: FontWeight.bold,
+                          fontSize: 14,
+                        ),
+                        textAlign: TextAlign.center,
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ],
+                  ),
+                ),
               );
-            }).toList(),
+            },
           ),
           const SizedBox(height: 20),
           Text(
@@ -339,7 +407,7 @@ class _HeadsUpHomePageState extends State<HeadsUpHomePage> {
           ),
           const SizedBox(height: 40),
           ElevatedButton(
-            onPressed: _selectedCategory != null ? _startGame : null,
+            onPressed: _startGame,
             style: ElevatedButton.styleFrom(
               backgroundColor: Colors.teal.shade600,
               disabledBackgroundColor: Colors.grey,
@@ -423,7 +491,6 @@ class _HeadsUpHomePageState extends State<HeadsUpHomePage> {
                     _timer?.cancel();
                     setState(() {
                       _gameState = GameState.lobby;
-                      _selectedCategory = null;
                     });
                   },
                 ),
@@ -534,7 +601,6 @@ class _HeadsUpHomePageState extends State<HeadsUpHomePage> {
             onPressed: () {
               setState(() {
                 _gameState = GameState.lobby;
-                _selectedCategory = null; // Reset category selection
               });
             },
             style: ElevatedButton.styleFrom(
