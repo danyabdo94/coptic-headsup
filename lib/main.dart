@@ -43,6 +43,7 @@ const int _kDebounceDurationMs =
 // Game States
 enum GameState {
   lobby, // Before the game starts
+  countdown, // 3-2-1 before playing
   playing, // Game in progress
   gameOver, // Game finished
 }
@@ -95,9 +96,11 @@ class _HeadsUpHomePageState extends State<HeadsUpHomePage> {
   GameState _gameState = GameState.lobby;
   int _score = 0;
   int _timeLeft = _kGameDurationSeconds;
+  int _countdownValue = 3;
   String _currentWord = '';
   String? _currentDescription;
   Timer? _timer;
+  Timer? _countdownTimer;
 
   // Sensor & Feedback Management
   // Subscription to the accelerometer stream for real-time tilt data
@@ -162,6 +165,7 @@ class _HeadsUpHomePageState extends State<HeadsUpHomePage> {
   @override
   void dispose() {
     _timer?.cancel();
+    _countdownTimer?.cancel();
     // Cancel the accelerometer subscription when the widget is removed
     _accelerometerSubscription?.cancel();
     super.dispose();
@@ -171,26 +175,58 @@ class _HeadsUpHomePageState extends State<HeadsUpHomePage> {
 
   /// Resets game variables and starts the 60-second timer.
   void _startGame([String? category]) {
-    List<WordItem> deck;
+    List<WordItem> deck = [];
+    final Set<String> addedWords = {};
+
     if (category != null) {
-      deck = List.from(_wordCategories[category]!);
-    } else {
-      deck = [];
-      for (var list in _wordCategories.values) {
-        deck.addAll(list);
+      // Single category: deduplicate just in case
+      for (var item in _wordCategories[category]!) {
+        if (addedWords.add(item.word)) {
+          deck.add(item);
+        }
       }
-      deck.shuffle(_random);
+    } else {
+      // All categories: deduplicate across all lists
+      for (var list in _wordCategories.values) {
+        for (var item in list) {
+          if (addedWords.add(item.word)) {
+            deck.add(item);
+          }
+        }
+      }
     }
+
+    // Shuffle once at the start
+    deck.shuffle(_random);
 
     if (deck.isEmpty) return;
 
     setState(() {
+      _currentDeck = deck;
+      _playedWords.clear();
+      _actionColor = Colors.black;
+      _gameState = GameState.countdown;
+      _countdownValue = 3;
+    });
+
+    _countdownTimer?.cancel();
+    _countdownTimer = Timer.periodic(const Duration(seconds: 1), (timer) {
+      if (_countdownValue > 1) {
+        setState(() {
+          _countdownValue--;
+        });
+      } else {
+        timer.cancel();
+        _beginGameplay();
+      }
+    });
+  }
+
+  void _beginGameplay() {
+    setState(() {
       _gameState = GameState.playing;
       _score = 0;
       _timeLeft = _kGameDurationSeconds;
-      _currentDeck = deck;
-      _playedWords.clear();
-      _actionColor = Colors.black; // Reset feedback color
       _nextWord(false); // Get the first word (don't count as correct)
     });
 
@@ -251,12 +287,11 @@ class _HeadsUpHomePageState extends State<HeadsUpHomePage> {
         );
       }
 
-      // Get a new random word and remove it from the deck
-      final int index = _random.nextInt(_currentDeck.length);
-      final WordItem nextItem = _currentDeck[index];
+      // Get the last word from the shuffled deck and remove it
+      // This ensures no repeats and is O(1)
+      final WordItem nextItem = _currentDeck.removeLast();
       _currentWord = nextItem.word;
       _currentDescription = nextItem.description;
-      _currentDeck.removeAt(index);
     });
 
     _resetActionColor(); // Reset color after action
@@ -376,11 +411,7 @@ class _HeadsUpHomePageState extends State<HeadsUpHomePage> {
                   child: Column(
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
-                      Icon(
-                        iconData,
-                        size: 32,
-                        color: Colors.black87,
-                      ),
+                      Icon(iconData, size: 32, color: Colors.black87),
                       const SizedBox(height: 8),
                       Text(
                         category.replaceAll('_', ' '),
@@ -551,6 +582,19 @@ class _HeadsUpHomePageState extends State<HeadsUpHomePage> {
     );
   }
 
+  Widget _buildCountdown() {
+    return Center(
+      child: Text(
+        '$_countdownValue',
+        style: const TextStyle(
+          fontSize: 120,
+          fontWeight: FontWeight.bold,
+          color: Colors.white,
+        ),
+      ),
+    );
+  }
+
   Widget _buildGameOver() {
     return SingleChildScrollView(
       child: Column(
@@ -629,6 +673,9 @@ class _HeadsUpHomePageState extends State<HeadsUpHomePage> {
     switch (_gameState) {
       case GameState.lobby:
         content = _buildLobby(context);
+        break;
+      case GameState.countdown:
+        content = _buildCountdown();
         break;
       case GameState.playing:
         content = _buildPlaying();
